@@ -7,8 +7,12 @@ paths:
   checkpoint_dir: checkpoints
   dataset_file: burgers_1d.npz
   checkpoint_file: fno1d.pt
+  baseline_checkpoint_file: baseline_cnn.pt
   train_metrics_file: fno_train_metrics.json
   eval_metrics_file: fno_eval_metrics.json
+  baseline_train_metrics_file: baseline_train_metrics.json
+  baseline_eval_metrics_file: baseline_eval_metrics.json
+  comparison_metrics_file: model_comparison_metrics.json
 
 data:
   n_grid: 32
@@ -24,6 +28,11 @@ model:
   modes: 8
   width: 16
   layers: 3
+
+baseline:
+  channels: 32
+  layers: 4
+  kernel_size: 5
 
 training:
   batch_size: 8

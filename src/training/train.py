@@ -8,6 +8,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from src.data.burgers import BurgersDataset
+from src.models.baseline_cnn import BaselineCNN1d
 from src.models.fno1d import FNO1d
 from src.utils.metrics import relative_l2_error
 
@@ -28,6 +29,15 @@ def make_fno_from_config(config: dict) -> FNO1d:
         modes=int(model_config["modes"]),
         width=int(model_config["width"]),
         layers=int(model_config["layers"]),
+    )
+
+
+def make_baseline_from_config(config: dict) -> BaselineCNN1d:
+    baseline_config = config["baseline"]
+    return BaselineCNN1d(
+        channels=int(baseline_config["channels"]),
+        layers=int(baseline_config["layers"]),
+        kernel_size=int(baseline_config["kernel_size"]),
     )
 
 
@@ -77,19 +87,20 @@ def run_epoch(
     }
 
 
-def train_fno(
+def train_model(
+    model: nn.Module,
     config: dict,
     splits: dict[str, tuple[torch.Tensor, torch.Tensor]],
     device: torch.device,
-) -> tuple[FNO1d, list[dict[str, float]], dict[str, float]]:
-    """Train FNO1d and return the model, epoch history, and best validation metrics."""
+) -> tuple[nn.Module, list[dict[str, float]], dict[str, float]]:
+    """Train an operator model and return the best-validation checkpoint state."""
     training_config = config["training"]
     batch_size = int(training_config["batch_size"])
 
     train_loader = make_dataloader(*splits["train"], batch_size=batch_size, shuffle=True)
     val_loader = make_dataloader(*splits["val"], batch_size=batch_size, shuffle=False)
 
-    model = make_fno_from_config(config).to(device)
+    model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=float(training_config["learning_rate"]))
     loss_fn = nn.MSELoss()
 
@@ -129,17 +140,41 @@ def train_fno(
     return model, history, best_metrics
 
 
+def train_fno(
+    config: dict,
+    splits: dict[str, tuple[torch.Tensor, torch.Tensor]],
+    device: torch.device,
+) -> tuple[FNO1d, list[dict[str, float]], dict[str, float]]:
+    """Train FNO1d and return the model, epoch history, and best validation metrics."""
+    model = make_fno_from_config(config)
+    trained_model, history, best_metrics = train_model(model, config, splits, device)
+    return trained_model, history, best_metrics
+
+
+def train_baseline(
+    config: dict,
+    splits: dict[str, tuple[torch.Tensor, torch.Tensor]],
+    device: torch.device,
+) -> tuple[BaselineCNN1d, list[dict[str, float]], dict[str, float]]:
+    """Train the simple 1D CNN baseline on the same data splits as FNO."""
+    model = make_baseline_from_config(config)
+    trained_model, history, best_metrics = train_model(model, config, splits, device)
+    return trained_model, history, best_metrics
+
+
 def save_checkpoint(
     model: nn.Module,
     config: dict,
     history: list[dict[str, float]],
     best_metrics: dict[str, float],
     path: str | Path,
+    model_name: str,
 ) -> None:
     checkpoint_path = Path(path)
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
+            "model_name": model_name,
             "model_state_dict": model.state_dict(),
             "config": config,
             "history": history,

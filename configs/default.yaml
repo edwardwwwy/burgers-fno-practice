@@ -13,6 +13,9 @@ paths:
   baseline_train_metrics_file: baseline_train_metrics.json
   baseline_eval_metrics_file: baseline_eval_metrics.json
   comparison_metrics_file: model_comparison_metrics.json
+  result_summary_file: result_summary.md
+  prediction_plot_file: prediction_comparison.png
+  loss_curve_file: loss_curves.png
 
 data:
   n_grid: 32

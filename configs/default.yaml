@@ -5,6 +5,10 @@ paths:
   data_dir: data
   output_dir: outputs
   checkpoint_dir: checkpoints
+  dataset_file: burgers_1d.npz
+  checkpoint_file: fno1d.pt
+  train_metrics_file: fno_train_metrics.json
+  eval_metrics_file: fno_eval_metrics.json
 
 data:
   n_grid: 32
@@ -12,8 +16,9 @@ data:
   time_horizon: 0.1
   time_steps: 20
   initial_condition_modes: 4
-  train_samples: 32
-  val_samples: 8
+  train_samples: 64
+  val_samples: 16
+  test_samples: 16
 
 model:
   modes: 8
@@ -23,7 +28,7 @@ model:
 training:
   batch_size: 8
   learning_rate: 0.001
-  epochs: 5
+  epochs: 8
 
 smoke:
   n_samples: 8

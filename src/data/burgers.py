@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import torch
+from torch.utils.data import Dataset
 
 
 def sample_initial_conditions(
@@ -103,3 +106,85 @@ def generate_burgers_data(
         time_steps=time_steps,
     )
     return torch.from_numpy(u0).float(), torch.from_numpy(uT).float()
+
+
+def generate_burgers_splits(config: dict) -> dict[str, tuple[torch.Tensor, torch.Tensor]]:
+    """Generate train/validation/test splits from a project config."""
+    data_config = config["data"]
+    seed = int(config["seed"])
+
+    split_sizes = {
+        "train": int(data_config["train_samples"]),
+        "val": int(data_config["val_samples"]),
+        "test": int(data_config["test_samples"]),
+    }
+
+    splits = {}
+    for index, (split_name, n_samples) in enumerate(split_sizes.items()):
+        # Use a deterministic offset per split so the splits are reproducible
+        # and do not contain identical initial conditions.
+        splits[split_name] = generate_burgers_data(
+            n_samples=n_samples,
+            n_grid=int(data_config["n_grid"]),
+            viscosity=float(data_config["viscosity"]),
+            time_horizon=float(data_config["time_horizon"]),
+            time_steps=int(data_config["time_steps"]),
+            initial_condition_modes=int(data_config["initial_condition_modes"]),
+            seed=seed + index,
+        )
+
+    return splits
+
+
+def save_burgers_splits(splits: dict[str, tuple[torch.Tensor, torch.Tensor]], path: str | Path) -> None:
+    """Save supervised Burgers splits to a compact NumPy .npz file."""
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    arrays = {}
+    for split_name, (inputs, targets) in splits.items():
+        arrays[f"{split_name}_inputs"] = inputs.cpu().numpy()
+        arrays[f"{split_name}_targets"] = targets.cpu().numpy()
+
+    np.savez_compressed(output_path, **arrays)
+
+
+def load_burgers_splits(path: str | Path) -> dict[str, tuple[torch.Tensor, torch.Tensor]]:
+    """Load train/validation/test splits saved by save_burgers_splits."""
+    dataset_path = Path(path)
+    if not dataset_path.exists():
+        raise FileNotFoundError(
+            f"Dataset not found: {dataset_path}. Run scripts/generate_data.py first."
+        )
+
+    data = np.load(dataset_path)
+    splits = {}
+    for split_name in ("train", "val", "test"):
+        inputs_key = f"{split_name}_inputs"
+        targets_key = f"{split_name}_targets"
+        if inputs_key not in data or targets_key not in data:
+            raise KeyError(f"Dataset is missing {inputs_key} or {targets_key}")
+        splits[split_name] = (
+            torch.from_numpy(data[inputs_key]).float(),
+            torch.from_numpy(data[targets_key]).float(),
+        )
+
+    return splits
+
+
+class BurgersDataset(Dataset):
+    """Tiny supervised dataset for operator learning: u(x, 0) -> u(x, T)."""
+
+    def __init__(self, inputs: torch.Tensor, targets: torch.Tensor) -> None:
+        if inputs.shape != targets.shape:
+            raise ValueError(f"inputs and targets must match, got {inputs.shape} and {targets.shape}")
+        if inputs.dim() != 2:
+            raise ValueError(f"expected tensors with shape [n_samples, n_grid], got {inputs.shape}")
+        self.inputs = inputs
+        self.targets = targets
+
+    def __len__(self) -> int:
+        return self.inputs.shape[0]
+
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+        return self.inputs[index], self.targets[index]

@@ -1,6 +1,6 @@
 # burgers-fno-practice
 
-A small, research-style PyTorch project for learning solution operators of the 1D viscous Burgers equation with a Fourier Neural Operator (FNO).
+A small, research-style PyTorch project for learning solution operators of the 1D viscous Burgers equation with a Fourier Neural Operator (FNO).A Codex-assisted PyTorch implementation and benchmark of Fourier Neural Operators for 1D Burgers’ equation.
 
 This repository is designed as a practice project before building a more serious 1D Schrödinger equation FNO benchmark. The emphasis is on a complete and reproducible workflow rather than a large-scale benchmark: synthetic data generation, FNO training, a simple CNN baseline, evaluation, plots, and a fast CPU smoke test.
 

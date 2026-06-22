@@ -59,6 +59,30 @@ The repository supports this workflow:
 5. Generate result plots and a summary report.
 6. Run a fast CPU smoke test for sanity checking.
 
+## Demo Results
+
+The default CPU-friendly run produces the following test-set metrics:
+
+| model | test MSE | test relative L2 |
+| --- | ---: | ---: |
+| FNO | 0.000886 | 0.124279 |
+| Baseline CNN | 0.000387 | 0.084926 |
+
+The main prediction plot compares the initial condition, numerical ground truth,
+FNO prediction, baseline prediction, and pointwise absolute errors:
+
+![Prediction comparison](outputs/prediction_comparison.png)
+
+The following plot repeatedly applies the trained one-step FNO to show qualitative
+behavior at `T`, `2T`, and `3T`. This is a rollout demonstration, so the error is
+expected to accumulate over steps:
+
+![FNO rollout comparison](outputs/fno_rollout_comparison.png)
+
+Training and validation loss curves:
+
+![Loss curves](outputs/loss_curves.png)
+
 ## File Structure
 
 ```text

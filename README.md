@@ -71,17 +71,21 @@ The default CPU-friendly run produces the following test-set metrics:
 The main prediction plot compares the initial condition, numerical ground truth,
 FNO prediction, baseline prediction, and pointwise absolute errors:
 
-![Prediction comparison](outputs/prediction_comparison.png)
+![Prediction comparison](docs/assets/prediction_comparison.png)
 
 The following plot repeatedly applies the trained one-step FNO to show qualitative
 behavior at `T`, `2T`, and `3T`. This is a rollout demonstration, so the error is
 expected to accumulate over steps:
 
-![FNO rollout comparison](outputs/fno_rollout_comparison.png)
+![FNO rollout comparison](docs/assets/fno_rollout_comparison.png)
 
 Training and validation loss curves:
 
-![Loss curves](outputs/loss_curves.png)
+![Loss curves](docs/assets/loss_curves.png)
+
+The figures above are committed display snapshots under `docs/assets/`. The
+regenerable experiment artifacts are still written to `outputs/` when the
+workflow is rerun.
 
 ## File Structure
 
@@ -103,6 +107,7 @@ scripts/evaluate.py               # Evaluation entry point
 scripts/plot_results.py           # Visualization/report entry point
 scripts/smoke_test.py             # Fast CPU smoke test
 tests/test_smoke.py               # Pytest smoke test wrapper
+docs/assets/                      # Committed README display images
 data/.gitkeep                     # Generated data directory placeholder
 outputs/.gitkeep                  # Generated outputs directory placeholder
 checkpoints/.gitkeep              # Generated checkpoint directory placeholder

@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+from src.data.burgers import solve_burgers_periodic
 from src.evaluation.evaluate import evaluate_split, load_model_checkpoint
 from src.training.train import save_metrics_summary
 
@@ -99,6 +100,58 @@ def plot_prediction_comparison(
     plt.close(fig)
 
 
+def plot_fno_rollout_comparison(
+    test_inputs: torch.Tensor,
+    fno_model: torch.nn.Module,
+    config: dict,
+    device: torch.device,
+    path: Path,
+    sample_index: int = 0,
+    rollout_steps: int = 3,
+) -> None:
+    """Plot repeated one-step FNO predictions against numerical Burgers solves."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    data_config = config["data"]
+    viscosity = float(data_config["viscosity"])
+    time_horizon = float(data_config["time_horizon"])
+    time_steps = int(data_config["time_steps"])
+
+    true_state = test_inputs[sample_index : sample_index + 1].cpu().numpy()
+    predicted_state = test_inputs[sample_index : sample_index + 1].to(device)
+
+    n_grid = true_state.shape[1]
+    x = np.linspace(0.0, 1.0, n_grid, endpoint=False)
+    fig, axes = plt.subplots(rollout_steps, 1, figsize=(9, 2.6 * rollout_steps), sharex=True)
+    axes = np.atleast_1d(axes)
+
+    fno_model.eval()
+    for step, ax in enumerate(axes, start=1):
+        true_state = solve_burgers_periodic(
+            u0=true_state,
+            viscosity=viscosity,
+            time_horizon=time_horizon,
+            time_steps=time_steps,
+        )
+        with torch.no_grad():
+            predicted_state = fno_model(predicted_state).detach()
+
+        prediction = predicted_state.cpu().numpy()
+        mse = float(np.mean((prediction - true_state) ** 2))
+
+        ax.plot(x, true_state[0], label=f"numerical truth t={step}T", color="black", linewidth=2)
+        ax.plot(x, prediction[0], label=f"FNO rollout t={step}T", color="tab:blue")
+        ax.set_ylabel("u")
+        ax.set_title(f"Repeated FNO one-step rollout, step {step}, MSE={mse:.6f}")
+        ax.grid(True, alpha=0.25)
+        ax.legend(loc="best")
+
+    axes[-1].set_xlabel("x")
+    fig.tight_layout()
+    fig.savefig(path, dpi=160)
+    plt.close(fig)
+
+
 def plot_loss_curves(
     fno_history: list[dict[str, float]],
     baseline_history: list[dict[str, float]],
@@ -136,6 +189,7 @@ def plot_loss_curves(
 def write_result_summary(
     comparison: dict[str, dict[str, float]],
     prediction_plot: Path,
+    rollout_plot: Path,
     loss_curve: Path,
     loss_curve_written: bool,
     path: Path,
@@ -154,6 +208,7 @@ def write_result_summary(
         "",
         "Generated artifacts:",
         f"- Prediction comparison: `{prediction_plot.name}`",
+        f"- Multi-step FNO rollout comparison: `{rollout_plot.name}`",
     ]
 
     if loss_curve_written:
@@ -208,6 +263,7 @@ def create_result_report(config: dict, project_root: Path, sample_index: int = 0
     )
 
     prediction_plot = output_dir / paths["prediction_plot_file"]
+    rollout_plot = output_dir / paths["rollout_plot_file"]
     loss_curve = output_dir / paths["loss_curve_file"]
     summary_path = output_dir / paths["result_summary_file"]
 
@@ -219,6 +275,14 @@ def create_result_report(config: dict, project_root: Path, sample_index: int = 0
         path=prediction_plot,
         sample_index=sample_index,
     )
+    plot_fno_rollout_comparison(
+        test_inputs=test_inputs,
+        fno_model=fno_model,
+        config=config,
+        device=device,
+        path=rollout_plot,
+        sample_index=sample_index,
+    )
     loss_curve_written = plot_loss_curves(
         fno_history=fno_checkpoint.get("history", []),
         baseline_history=baseline_checkpoint.get("history", []),
@@ -227,12 +291,13 @@ def create_result_report(config: dict, project_root: Path, sample_index: int = 0
     write_result_summary(
         comparison=comparison,
         prediction_plot=prediction_plot,
+        rollout_plot=rollout_plot,
         loss_curve=loss_curve,
         loss_curve_written=loss_curve_written,
         path=summary_path,
     )
 
-    created = [prediction_plot, summary_path, output_dir / paths["comparison_metrics_file"]]
+    created = [prediction_plot, rollout_plot, summary_path, output_dir / paths["comparison_metrics_file"]]
     if loss_curve_written:
         created.append(loss_curve)
     return created

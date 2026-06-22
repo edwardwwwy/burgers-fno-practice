@@ -131,6 +131,16 @@ Generate plots and result summary:
 python scripts/plot_results.py --config configs/default.yaml
 ```
 
+Open the guided notebook:
+
+```text
+notebooks/burgers_fno_demo.ipynb
+```
+
+The notebook explains the Burgers PDE background, the operator-learning task, the
+FNO1d model, the generated dataset, evaluation metrics, prediction plots, and a
+multi-step qualitative FNO rollout.
+
 Run the fast smoke test:
 
 ```bash
@@ -155,6 +165,7 @@ outputs/baseline_eval_metrics.json
 outputs/model_comparison_metrics.json
 outputs/result_summary.md
 outputs/prediction_comparison.png
+outputs/fno_rollout_comparison.png
 outputs/loss_curves.png
 ```
 
